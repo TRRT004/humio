@@ -17,7 +17,7 @@
 //!
 //! ## Core Features
 //!
-//! - **WindMouse path generation** — human-like curved mouse paths with inertia and wind forces.
+//! - **`WindMouse` path generation** — human-like curved mouse paths with inertia and wind forces.
 //! - **Gaussian delay distributions** — natural timing variance for clicks and keystrokes using a Box-Muller transform.
 //! - **Hover overshoots** — configurable probability of slightly overshooting a target before correcting.
 //! - **Typing error simulation** — realistic typos, transpositions, and double-taps with backspace correction.

@@ -2,7 +2,7 @@
 pub mod delay;
 /// Geometric targeting structures (Points, Rectangles, Circles, Polygons) with skewed distribution sampling.
 pub mod target_area;
-/// Curved mouse path trajectory generator using the WindMouse physics model.
+/// Curved mouse path trajectory generator using the `WindMouse` physics model.
 pub mod wind_mouse;
 
 mod device;

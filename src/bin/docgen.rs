@@ -12,7 +12,7 @@ fn main() -> Result<(), String> {
 		match args[i].as_str() {
 			"-m" | "--message" => {
 				if i + 1 < args.len() {
-					commit_msg = args[i + 1].clone();
+					commit_msg.clone_from(&args[i + 1]);
 					i += 2;
 				} else {
 					return Err("Error: Missing value for --message option".to_string());
@@ -34,8 +34,7 @@ fn main() -> Result<(), String> {
 			}
 			arg => {
 				return Err(format!(
-					"Error: Unknown argument '{}'. Use --help for usage information.",
-					arg
+					"Error: Unknown argument '{arg}'. Use --help for usage information."
 				));
 			}
 		}
