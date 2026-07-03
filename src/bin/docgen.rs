@@ -27,7 +27,9 @@ fn main() -> Result<(), String> {
 				println!("Usage:");
 				println!("  cargo run --bin docgen [OPTIONS]\n");
 				println!("Options:");
-				println!("  -m, --message <MSG>   Set the git commit message (default: \"docs: update API documentation\")");
+				println!(
+					"  -m, --message <MSG>   Set the git commit message (default: \"docs: update API documentation\")"
+				);
 				println!("      --no-push         Skip pushing to the remote repository");
 				println!("  -h, --help            Print help information");
 				return Ok(());
