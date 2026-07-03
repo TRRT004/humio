@@ -3,19 +3,44 @@ use enigo::{Button, Direction, Key};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+/// Represents an event captured by the mock device recording system.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InputEvent {
+	/// A query requesting the current cursor coordinates.
 	MouseLocationQuery(Point),
+	/// Absolute mouse cursor translation.
 	MouseMoved(Point),
+	/// Relative mouse cursor offset translation.
 	MouseMovedBy(Point),
+	/// Mouse button click.
 	MouseClicked(Button),
+	/// Mouse button press-and-hold.
 	MouseHeld(Button),
+	/// Mouse button release.
 	MouseReleased(Button),
-	MouseScrolled { length: i32, axis: ScrollAxis },
-	KeyAction { key: Key, action: Direction },
+	/// Scroll wheel activation.
+	MouseScrolled {
+		/// The distance/amount scrolled.
+		length: i32,
+		/// The direction/axis of scrolling.
+		axis: ScrollAxis,
+	},
+	/// Raw keyboard key press or release.
+	KeyAction {
+		/// The key that was acted upon.
+		key: Key,
+		/// The action performed on the key (Press, Release, or Click).
+		action: Direction,
+	},
+	/// Text typed verbatim.
 	TextTyped(String),
 }
 
+/// An in-memory [`InputDevice`] recorder designed for automated testing.
+///
+/// Instead of communicating with actual system hardware driver endpoints,
+/// `MockDevice` keeps track of simulated coordinates and captures every input invocation
+/// into a list of [`InputEvent`]s.
 #[derive(Clone)]
 pub struct MockDevice {
 	location: Rc<RefCell<Point>>,
@@ -23,6 +48,7 @@ pub struct MockDevice {
 }
 
 impl MockDevice {
+	/// Creates a new `MockDevice` with the specified initial cursor coordinates.
 	#[must_use]
 	pub fn new(initial_location: Point) -> Self {
 		Self {
@@ -31,15 +57,18 @@ impl MockDevice {
 		}
 	}
 
+	/// Retrieves all input events logged by this device.
 	#[must_use]
 	pub fn get_events(&self) -> Vec<InputEvent> {
 		self.events.borrow().clone()
 	}
 
+	/// Clears the accumulated input event log history.
 	pub fn clear_events(&self) {
 		self.events.borrow_mut().clear();
 	}
 
+	/// Manually overrides the mock device cursor coordinates (e.g. to simulate user manual mouse drag).
 	pub fn set_location(&self, point: Point) {
 		*self.location.borrow_mut() = point;
 	}

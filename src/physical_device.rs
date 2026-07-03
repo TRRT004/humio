@@ -4,11 +4,21 @@ use enigo::{
 	Mouse as EnigoMouse, Settings,
 };
 
+/// An input simulation device backed by the real system hardware/OS input events via the `enigo` crate.
+///
+/// Under the hood, this uses OS-specific APIs (such as X11/Wayland on Linux, Win32 on Windows, or Cocoa on macOS)
+/// to issue mouse and keyboard events directly.
 pub struct PhysicalDevice {
 	enigo: Enigo,
 }
 
 impl PhysicalDevice {
+	/// Creates a new `PhysicalDevice` instance.
+	///
+	/// # Errors
+	///
+	/// Returns a [`HumioError::Backend`] if initialization of the underlying enigo handle fails
+	/// (e.g. due to insufficient system permissions, missing display server connection, or configuration issues).
 	pub fn new() -> Result<Self, HumioError> {
 		let enigo = Enigo::new(&Settings::default())
 			.map_err(|e| HumioError::Backend(format!("Failed to init Enigo: {e:?}")))?;

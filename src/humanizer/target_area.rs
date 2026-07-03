@@ -8,29 +8,67 @@
 use super::delay::{sample_gaussian, sample_gaussian_clamped};
 use crate::Point;
 
+/// Represents a spatial target area on screen where user input is directed.
+///
+/// Unlike standard automated inputs that target exact pixels, `TargetArea`
+/// leverages normal (Gaussian) distributions to sample coordinates,
+/// realistically simulating how humans click.
+///
+/// # Examples
+///
+/// ```rust
+/// use humio::{TargetArea, Point};
+///
+/// // Define a rectangular button target with high density in the center
+/// let target = TargetArea::Rect {
+///     top_left: Point::new(100, 100),
+///     bottom_right: Point::new(200, 150),
+///     target: None,       // defaults to centroid (150, 125)
+///     std_dev_x: None,    // defaults to 1/6th of width
+///     std_dev_y: None,    // defaults to 1/6th of height
+/// };
+///
+/// let point = target.generate_click_point();
+/// assert!(point.x >= 100 && point.x <= 200);
+/// assert!(point.y >= 100 && point.y <= 150);
+/// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TargetArea {
+	/// A single absolute pixel point on screen (no variance).
 	Point(Point),
+	/// A rectangular target bounds.
 	Rect {
+		/// The top-left corner of the rectangle.
 		top_left: Point,
+		/// The bottom-right corner of the rectangle.
 		bottom_right: Point,
 		/// Target point within the Rect where we skew the distribution (defaults to centroid).
 		target: Option<Point>,
+		/// Custom standard deviation along the X-axis (defaults to 1/6 of the width).
 		std_dev_x: Option<i32>,
+		/// Custom standard deviation along the Y-axis (defaults to 1/6 of the height).
 		std_dev_y: Option<i32>,
 	},
+	/// A circular target bounds.
 	Circle {
+		/// The center coordinate of the circle.
 		center: Point,
+		/// The radius of the circle in pixels.
 		radius: i32,
 		/// Target point within the Circle where we skew the distribution (defaults to center).
 		target: Option<Point>,
+		/// Custom standard deviation for the distribution distance (defaults to 1/3 of the radius).
 		std_dev: Option<i32>,
 	},
+	/// A polygonal target bounds.
 	Polygon {
+		/// List of vertices defining the polygon in order.
 		vertices: Vec<Point>,
 		/// Target point within the Polygon where we skew the distribution (defaults to centroid).
 		target: Option<Point>,
+		/// Custom standard deviation along the X-axis (defaults to 1/6 of the bounding box width).
 		std_dev_x: Option<i32>,
+		/// Custom standard deviation along the Y-axis (defaults to 1/6 of the bounding box height).
 		std_dev_y: Option<i32>,
 	},
 }
