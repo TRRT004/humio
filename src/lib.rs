@@ -1,13 +1,22 @@
-pub mod humanizer;
-pub mod physical_device;
-pub mod mock;
+#![allow(
+	clippy::missing_errors_doc,
+	clippy::similar_names,
+	clippy::too_many_lines,
+	clippy::type_complexity
+)]
 
-pub use physical_device::PhysicalDevice;
+pub mod error;
+pub mod humanizer;
+pub mod mock;
+pub mod physical_device;
+
+pub use error::HumioError;
 pub use humanizer::{
-	HumanizedDevice, TargetArea, ClickFailure, KeyCombinationFailure,
-	KeyboardFailure, FailureType, FailureChanceCalculator, HumanizerConfig,
+	ClickFailure, FailureChanceCalculator, FailureType, HumanizedDevice, HumanizerConfig,
+	KeyCombinationFailure, KeyboardFailure, TargetArea,
 };
-pub use mock::{MockDevice, InputEvent};
+pub use mock::{InputEvent, MockDevice};
+pub use physical_device::PhysicalDevice;
 
 use enigo::{Button, Direction, Key};
 
@@ -47,20 +56,20 @@ pub enum ScrollAxis {
 }
 
 pub trait Mouse {
-	fn location(&self) -> Result<Point, String>;
-	fn move_mouse(&mut self, point: Point) -> Result<(), String>;
-	fn move_mouse_by(&mut self, offset: Point) -> Result<(), String>;
-	fn click(&mut self, button: Button) -> Result<(), String>;
-	fn hold(&mut self, button: Button) -> Result<(), String>;
-	fn release(&mut self, button: Button) -> Result<(), String>;
-	fn scroll(&mut self, length: i32, axis: ScrollAxis) -> Result<(), String>;
+	fn location(&self) -> Result<Point, HumioError>;
+	fn move_mouse(&mut self, point: Point) -> Result<(), HumioError>;
+	fn move_mouse_by(&mut self, offset: Point) -> Result<(), HumioError>;
+	fn click(&mut self, button: Button) -> Result<(), HumioError>;
+	fn hold(&mut self, button: Button) -> Result<(), HumioError>;
+	fn release(&mut self, button: Button) -> Result<(), HumioError>;
+	fn scroll(&mut self, length: i32, axis: ScrollAxis) -> Result<(), HumioError>;
 }
 
 pub trait Keyboard {
-	fn key(&mut self, key: Key, action: Direction) -> Result<(), String>;
-	fn text(&mut self, text: &str) -> Result<(), String>;
+	fn key(&mut self, key: Key, action: Direction) -> Result<(), HumioError>;
+	fn text(&mut self, text: &str) -> Result<(), HumioError>;
 
-	fn key_combination(&mut self, modifiers: &[Key], key: Key) -> Result<(), String> {
+	fn key_combination(&mut self, modifiers: &[Key], key: Key) -> Result<(), HumioError> {
 		for &mod_key in modifiers {
 			self.key(mod_key, Direction::Press)?;
 		}

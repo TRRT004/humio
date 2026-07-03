@@ -1,4 +1,4 @@
-# rs3-input
+# humio
 
 A humanized input simulation library for Rust scripting. Provides realistic mouse movement, keyboard typing, and configurable failure injection with automatic recovery — designed to mimic human imperfection rather than robotic precision.
 
@@ -26,12 +26,12 @@ A humanized input simulation library for Rust scripting. Provides realistic mous
 
 ```toml
 [dependencies]
-rs3-input = { path = "../rs3-input" }  # or git/crates.io when published
+humio = { path = "../humio" }  # or git/crates.io when published
 ```
 
 ```rust
-use rs3_input::{HumanizedDevice, TargetArea, Point, ClickFailure};
-use rs3_input::PhysicalDevice;
+use humio::{HumanizedDevice, TargetArea, Point, ClickFailure};
+use humio::PhysicalDevice;
 use enigo::Button;
 
 fn main() -> Result<(), String> {
@@ -60,7 +60,7 @@ fn main() -> Result<(), String> {
 ## Custom Failure Recovery
 
 ```rust
-use rs3_input::{HumanizedDevice, TargetArea, Point, ClickFailure};
+use humio::{HumanizedDevice, TargetArea, Point, ClickFailure};
 
 let mut failures = vec![
     (
@@ -79,7 +79,7 @@ dev.click_area_flexible(&target, Button::Left, &mut failures)?;
 ## Architecture
 
 ```
-rs3-input/
+humio/
 └── src/
     ├── lib.rs                  # Public API: traits (Mouse, Keyboard, InputDevice), Point, etc.
     ├── physical_device.rs      # Enigo-backed real hardware device

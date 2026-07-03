@@ -98,7 +98,7 @@ Replace the inline `match` with `self.execute_click_failure(&failure, area, butt
 ## 4. API Usage Example
 
 ```rust
-use rs3_input::{HumanizedDevice, TargetArea, Point, ClickFailure};
+use humio::{HumanizedDevice, TargetArea, Point, ClickFailure};
 use enigo::Button;
 
 let compound = ClickFailure::Compound(vec![

@@ -1,5 +1,5 @@
-use crate::InputDevice;
 use super::failures::{FailureChanceCalculator, HumanizerConfig};
+use crate::InputDevice;
 
 pub struct HumanizedDevice<D: InputDevice> {
 	pub(super) inner: D,

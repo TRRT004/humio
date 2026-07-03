@@ -1,5 +1,5 @@
-use enigo::{Button, Key};
 use super::target_area::TargetArea;
+use enigo::{Button, Key};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClickFailure {
@@ -66,9 +66,7 @@ pub struct HumanizerConfig {
 impl Default for HumanizerConfig {
 	fn default() -> Self {
 		Self {
-			click_failures: vec![
-				(ClickFailure::Misclick, 0.05),
-			],
+			click_failures: vec![(ClickFailure::Misclick, 0.05)],
 			typing_failures: vec![
 				(KeyboardFailure::Typo, 0.02),
 				(KeyboardFailure::Transposition, 0.015),

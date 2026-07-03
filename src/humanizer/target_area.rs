@@ -1,5 +1,12 @@
-use crate::Point;
+#![allow(
+	clippy::cast_possible_truncation,
+	clippy::cast_sign_loss,
+	clippy::cast_possible_wrap,
+	clippy::cast_precision_loss
+)]
+
 use super::delay::{sample_gaussian, sample_gaussian_clamped};
+use crate::Point;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TargetArea {
@@ -47,9 +54,9 @@ impl TargetArea {
 				let x2 = bottom_right.x;
 				let y2 = bottom_right.y;
 
-				let default_tx = (x1 + x2) / 2;
-				let default_ty = (y1 + y2) / 2;
-				let (tx, ty) = target.map(|p| (p.x, p.y)).unwrap_or((default_tx, default_ty));
+				let default_tx = x1.midpoint(x2);
+				let default_ty = y1.midpoint(y2);
+				let (tx, ty) = target.map_or((default_tx, default_ty), |p| (p.x, p.y));
 
 				// Clamp skew target inside the rectangle bounds
 				let tx = tx.clamp(x1, x2);
@@ -71,7 +78,7 @@ impl TargetArea {
 			} => {
 				let cx = center.x;
 				let cy = center.y;
-				let (tx, ty) = target.map(|p| (p.x, p.y)).unwrap_or((cx, cy));
+				let (tx, ty) = target.map_or((cx, cy), |p| (p.x, p.y));
 
 				// Clamp skew target inside the circle bounds
 				let dx = tx - cx;
@@ -111,7 +118,7 @@ impl TargetArea {
 					return Point::new(0, 0);
 				}
 				let (default_tx, default_ty) = polygon_centroid(vertices);
-				let (tx, ty) = target.map(|p| (p.x, p.y)).unwrap_or((default_tx, default_ty));
+				let (tx, ty) = target.map_or((default_tx, default_ty), |p| (p.x, p.y));
 
 				// Calculate bounding box for sampling and clamping
 				let mut min_x = i32::MAX;
@@ -119,10 +126,18 @@ impl TargetArea {
 				let mut min_y = i32::MAX;
 				let mut max_y = i32::MIN;
 				for &Point { x: vx, y: vy } in vertices {
-					if vx < min_x { min_x = vx; }
-					if vx > max_x { max_x = vx; }
-					if vy < min_y { min_y = vy; }
-					if vy > max_y { max_y = vy; }
+					if vx < min_x {
+						min_x = vx;
+					}
+					if vx > max_x {
+						max_x = vx;
+					}
+					if vy < min_y {
+						min_y = vy;
+					}
+					if vy > max_y {
+						max_y = vy;
+					}
 				}
 
 				let s_x = std_dev_x.unwrap_or_else(|| ((max_x - min_x).abs() / 6).max(1));
@@ -178,9 +193,7 @@ fn is_point_in_polygon(x: i32, y: i32, vertices: &[Point]) -> bool {
 	for i in 0..n {
 		let vi = vertices[i];
 		let vj = vertices[j];
-		if ((vi.y > y) != (vj.y > y))
-			&& (x < (vj.x - vi.x) * (y - vi.y) / (vj.y - vi.y) + vi.x)
-		{
+		if ((vi.y > y) != (vj.y > y)) && (x < (vj.x - vi.x) * (y - vi.y) / (vj.y - vi.y) + vi.x) {
 			inside = !inside;
 		}
 		j = i;

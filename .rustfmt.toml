@@ -1,0 +1,27 @@
+# .rustfmt.toml
+# Rustfmt configuration file
+# Reference: https://rust-lang.github.io/rustfmt/
+
+# Use the Rust 2024 edition styling rules
+edition = "2024"
+
+# Maximum line width before wrapping
+max_width = 100
+
+# Number of spaces per tab
+tab_spaces = 4
+
+# Use actual tab characters instead of spaces for indentation
+hard_tabs = true
+
+# Automatically reorder 'use' statements alphabetically
+reorder_imports = true
+
+# Use native line endings (CRLF on Windows, LF on Unix)
+newline_style = "Native"
+
+# Use field initialization shorthand (e.g. `Point { x, y }` instead of `Point { x: x, y: y }`)
+use_field_init_shorthand = true
+
+# Convert try! macro to the `?` operator
+use_try_shorthand = true

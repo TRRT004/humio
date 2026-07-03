@@ -1,18 +1,19 @@
 [package]
-name = "rs3-input"
+name = "humio"
 version = "0.1.0"
 edition = "2024"
 description = "Humanized input simulation for Rust scripting — realistic mouse movement, keyboard typing, and failure injection with configurable recovery."
 license = "MIT"
-repository = "https://github.com/rober/rs3-input"
+repository = "https://github.com/rober/humio"
 keywords = ["input", "automation", "humanizer", "mouse", "keyboard"]
 categories = ["simulation", "os"]
 readme = "README.md"
 
 [dependencies]
-enigo = "0.6.1"
-rand = "0.10.2"
+enigo = "0.6"
+rand = "0.10"
 log = "0.4"
+thiserror = "2"
 
 [dev-dependencies]
 # Tests live in src/mock.rs directly — no extra dev deps needed

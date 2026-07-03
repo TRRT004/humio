@@ -1,0 +1,60 @@
+# .clippy.toml
+# Rust Clippy Configuration File
+# Reference: https://rust-lang.github.io/rust-clippy/master/index.html#configurations
+
+# --- General Configurations ---
+
+# Minimum Supported Rust Version (MSRV) for this project.
+# Prevents Clippy from suggesting modern Rust features not supported by this version.
+msrv = "1.87.0"
+
+# Set to false for binaries/internal scripts since breaking API changes within the crate do not affect external users.
+# Allows Clippy to suggest API-breaking refactorings for exported items.
+avoid-breaking-exported-api = false
+
+
+# --- Complexity & Cleanliness Thresholds ---
+
+# The maximum cognitive complexity of a function before triggering a warning.
+# Default: 25
+cognitive-complexity-threshold = 25
+
+# The maximum number of arguments a function can take.
+# Default: 7
+too-many-arguments-threshold = 6
+
+# The maximum number of lines a function can have.
+# Default: 100
+too-many-lines-threshold = 100
+
+# The maximum complexity of a type definition before triggering a warning.
+# Default: 250
+type-complexity-threshold = 250
+
+
+# --- Naming and Documentation ---
+
+# Disallowed names that should trigger warnings (e.g. foo, bar, baz).
+# ".." retains the default Clippy disallowed names list.
+disallowed-names = [
+    "..",
+]
+
+# Words that are valid in documentation comments without needing to be wrapped in backticks.
+# ".." retains the default Clippy list of valid identifiers.
+doc-valid-idents = [
+    "RS3",
+    "RuneScape",
+    "..",
+]
+
+
+# --- Testing Configurations ---
+
+# Allows `.unwrap()` and `.expect()` in tests without triggering `clippy::unwrap_used`.
+# Default: false
+allow-unwrap-in-tests = true
+
+# Allows panicking macros (`panic!`, `assert!`, etc.) in tests without triggering `clippy::panic`.
+# Default: false
+allow-panic-in-tests = true

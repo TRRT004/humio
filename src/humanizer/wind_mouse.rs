@@ -1,15 +1,18 @@
+#![allow(
+	clippy::cast_possible_truncation,
+	clippy::cast_sign_loss,
+	clippy::cast_possible_wrap
+)]
+
 use crate::{DelayMs, PathStep, Point};
-use rand::Rng;
+use rand::RngExt;
 
 const SQRT3: f64 = 1.732_050_807_568_877_2;
 
 /// Generates a human-like mouse path from start to target
 /// using the `WindMouse` path algorithm.
 #[must_use]
-pub fn generate_wind_mouse_path(
-	start: Point,
-	target: Point,
-) -> Vec<PathStep> {
+pub fn generate_wind_mouse_path(start: Point, target: Point) -> Vec<PathStep> {
 	if start == target {
 		return vec![PathStep {
 			point: target,
@@ -31,7 +34,6 @@ pub fn generate_wind_mouse_path(
 	let max_step = 12.0;
 	let target_area = 15.0;
 
-	use rand::RngExt;
 	let mut rng = rand::rng();
 
 	path.push(PathStep {
@@ -48,11 +50,7 @@ pub fn generate_wind_mouse_path(
 			break;
 		}
 
-		let current_wind = if dist < target_area {
-			wind / 3.0
-		} else {
-			wind
-		};
+		let current_wind = if dist < target_area { wind / 3.0 } else { wind };
 
 		let wind_x = rng.random_range(-1.0..=1.0) * current_wind / SQRT3;
 		let wind_y = rng.random_range(-1.0..=1.0) * current_wind / SQRT3;
