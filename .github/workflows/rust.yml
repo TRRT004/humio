@@ -49,3 +49,29 @@ jobs:
           components: clippy
       - name: Clippy Lint
         run: cargo clippy --all-targets -- -D warnings
+
+  docs:
+    name: Publish Documentation
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [check, test, fmt, clippy]
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}humio/index.html
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Generate HTML Docs
+        run: cargo doc --no-deps
+      - name: Fix redirect to index
+        run: echo '<meta http-equiv="refresh" content="0;url=humio/index.html">' > target/doc/index.html
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/doc
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
