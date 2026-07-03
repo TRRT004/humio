@@ -5,7 +5,7 @@ This plan outlines how to support **recursive failure recovery** (e.g. allowing 
 ---
 
 ## 1. Problem Statement
-When a recovery closure is executed (e.g., clicking a "Cancel" button to clear a misclick), that recovery action is also a humanized call. In a realistic simulation, this recovery action can *also* fail. 
+When a recovery closure is executed (e.g., clicking a "Cancel" button to clear a misclick), that recovery action is also a humanized call. In a realistic simulation, this recovery action can *also* fail.
 
 However, allowing recovery actions to fail recursively introduces a major risk of **infinite recovery loops** (e.g., trying to recover from a failure, failing the recovery, trying to recover from that failure, and recursing forever).
 
@@ -29,13 +29,13 @@ graph TD
     Start["Call Humanized Operation"] --> CheckErr{Failure Roll Triggers?}
     CheckErr -- No --> ExecNorm["Execute Action Normally"] --> End["Done"]
     CheckErr -- Yes --> CheckDepth{"recovery_depth >= max_recovery_depth?"}
-    
+
     CheckDepth -- Yes --> ForceNorm["Bypass Failure (Force 100% Success)"] --> ExecNorm
     CheckDepth -- No --> IncDepth["Increment recovery_depth"]
-    
+
     IncDepth --> ExecErr["Execute Simulated Error Action"]
     ExecErr --> RunClosure["Execute Recovery Closure"]
-    
+
     RunClosure --> DecDepth["Decrement recovery_depth"]
     DecDepth --> Retry["Retry Original Correct Action"]
     Retry --> End
@@ -52,7 +52,7 @@ pub struct HumanizedDevice<D: InputDevice> {
     pub(super) inner: D,
     pub(super) chance_calculator: Option<Box<dyn FailureChanceCalculator>>,
     pub config: HumanizerConfig,
-    
+
     // Safety recursion guards
     pub recovery_depth: usize,
     pub max_recovery_depth: usize,
