@@ -35,7 +35,10 @@ impl<D: InputDevice> HumanizedDevice<D> {
 
 		match failure {
 			KeyCombinationFailure::Compound(sub_failures) => {
-				log::trace!("Executing compound key combination failure with {} sub-errors", sub_failures.len());
+				log::trace!(
+					"Executing compound key combination failure with {} sub-errors",
+					sub_failures.len()
+				);
 				for sub in sub_failures {
 					self.execute_key_combination_failure(sub, modifiers, key)?;
 					std::thread::sleep(std::time::Duration::from_millis(50));
@@ -48,9 +51,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 						continue;
 					}
 					self.inner.key(mod_key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(
-						rng.random_range(15..45),
-					));
+					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(15..45)));
 				}
 				self.inner.key(key, Direction::Press)?;
 				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
@@ -60,9 +61,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 					if mod_key == *missed_mod {
 						continue;
 					}
-					std::thread::sleep(std::time::Duration::from_millis(
-						rng.random_range(15..45),
-					));
+					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(15..45)));
 					self.inner.key(mod_key, Direction::Release)?;
 				}
 			}
@@ -72,18 +71,14 @@ impl<D: InputDevice> HumanizedDevice<D> {
 				);
 				for &mod_key in modifiers {
 					self.inner.key(mod_key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(
-						rng.random_range(15..45),
-					));
+					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(15..45)));
 				}
 				self.inner.key(*wrong_key, Direction::Press)?;
 				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
 				self.inner.key(*wrong_key, Direction::Release)?;
 
 				for &mod_key in modifiers.iter().rev() {
-					std::thread::sleep(std::time::Duration::from_millis(
-						rng.random_range(15..45),
-					));
+					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(15..45)));
 					self.inner.key(mod_key, Direction::Release)?;
 				}
 			}
@@ -93,9 +88,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 				);
 				for &mod_key in modifiers {
 					self.inner.key(mod_key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(
-						rng.random_range(15..45),
-					));
+					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(15..45)));
 				}
 				// Release the early modifier before target key is pressed
 				self.inner.key(*early_mod, Direction::Release)?;
@@ -109,9 +102,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 					if mod_key == *early_mod {
 						continue;
 					}
-					std::thread::sleep(std::time::Duration::from_millis(
-						rng.random_range(15..45),
-					));
+					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(15..45)));
 					self.inner.key(mod_key, Direction::Release)?;
 				}
 			}
@@ -121,9 +112,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 				);
 				for &mod_key in modifiers {
 					self.inner.key(mod_key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(
-						rng.random_range(15..45),
-					));
+					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(15..45)));
 				}
 				self.inner.key(key, Direction::Press)?;
 				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
@@ -133,9 +122,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 					if mod_key == *stuck_mod {
 						continue; // Leave it stuck in OS keyboard state!
 					}
-					std::thread::sleep(std::time::Duration::from_millis(
-						rng.random_range(15..45),
-					));
+					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(15..45)));
 					self.inner.key(mod_key, Direction::Release)?;
 				}
 			}
@@ -478,7 +465,9 @@ impl<D: InputDevice> HumanizedDevice<D> {
 				self.key_combination_normal(modifiers, key)?;
 			}
 			KeyCombinationFailure::Compound(_) => {
-				log::debug!("Built-in recovery: compound failure occurred. Retrying correct combination.");
+				log::debug!(
+					"Built-in recovery: compound failure occurred. Retrying correct combination."
+				);
 				self.key_combination_normal(modifiers, key)?;
 			}
 		}

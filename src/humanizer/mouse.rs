@@ -25,7 +25,10 @@ impl<D: InputDevice> HumanizedDevice<D> {
 
 		match failure {
 			ClickFailure::Compound(sub_failures) => {
-				log::trace!("Executing compound click failure with {} sub-errors", sub_failures.len());
+				log::trace!(
+					"Executing compound click failure with {} sub-errors",
+					sub_failures.len()
+				);
 				for sub in sub_failures {
 					self.execute_click_failure(sub, area, button)?;
 					// Stagger delay between cascading sub-failures
@@ -69,7 +72,9 @@ impl<D: InputDevice> HumanizedDevice<D> {
 				self.inner.click(button)?;
 			}
 			ClickFailure::WrongButton(wrong_btn) => {
-				log::trace!("Executing wrong button click: clicking {wrong_btn:?} instead of expected {button:?}");
+				log::trace!(
+					"Executing wrong button click: clicking {wrong_btn:?} instead of expected {button:?}"
+				);
 				self.move_to_area(area, false)?;
 				sleep_gaussian_delay(DelayMs(80), 20);
 				self.inner.click(*wrong_btn)?;
@@ -306,7 +311,9 @@ impl<D: InputDevice> HumanizedDevice<D> {
 				log::debug!("Built-in recovery: double-click occurred. Realized and proceeding.");
 			}
 			ClickFailure::Compound(_) => {
-				log::debug!("Built-in recovery: compound failure occurred. Retrying correct click at target area.");
+				log::debug!(
+					"Built-in recovery: compound failure occurred. Retrying correct click at target area."
+				);
 				self.move_to_area(area, false)?;
 				sleep_gaussian_delay(DelayMs(80), 20);
 				self.inner.click(button)?;

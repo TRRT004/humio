@@ -2,8 +2,8 @@ use super::failures::{FailureChanceCalculator, HumanizerConfig};
 use crate::InputDevice;
 
 pub struct HumanizedDevice<D: InputDevice> {
-	pub(super) inner: D,
-	pub(super) chance_calculator: Option<Box<dyn FailureChanceCalculator>>,
+	pub(crate) inner: D,
+	pub(crate) chance_calculator: Option<Box<dyn FailureChanceCalculator>>,
 	pub config: HumanizerConfig,
 	pub recovery_depth: usize,
 	pub max_recovery_depth: usize,
@@ -37,12 +37,12 @@ impl<D: InputDevice> HumanizedDevice<D> {
 	}
 
 	/// Returns true if failure simulations should be bypassed due to current recovery nesting depth.
-	pub(super) fn should_bypass_failures(&self) -> bool {
+	pub(crate) fn should_bypass_failures(&self) -> bool {
 		self.recovery_depth >= self.max_recovery_depth
 	}
 
 	/// Executes a block of code within an active recovery context, incrementing/decrementing depth.
-	pub(super) fn execute_recovery_context<F, R>(&mut self, mut f: F) -> R
+	pub(crate) fn execute_recovery_context<F, R>(&mut self, mut f: F) -> R
 	where
 		F: FnMut(&mut Self) -> R,
 	{
