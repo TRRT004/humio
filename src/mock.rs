@@ -440,4 +440,80 @@ mod tests {
 		drop(failures);
 		assert_eq!(recovery_runs, 1);
 	}
+
+	#[test]
+	fn test_compound_click_failures() {
+		let mock = MockDevice::new(Point::new(0, 0));
+		let mut dev = HumanizedDevice::new(mock.clone());
+		let mut recovery_called = false;
+
+		let target_area = TargetArea::Point(Point::new(50, 50));
+
+		let compound = ClickFailure::Compound(vec![
+			ClickFailure::Misclick,
+			ClickFailure::WrongButton(Button::Right),
+		]);
+
+		let mut failures = vec![(
+			compound,
+			1.0, // 100% chance to trigger
+			Box::new(|_d: &mut HumanizedDevice<MockDevice>| {
+				recovery_called = true;
+				Ok(())
+			}) as Box<dyn FnMut(&mut _) -> _>,
+		)];
+
+		dev.click_area_flexible(&target_area, Button::Left, &mut failures)
+			.unwrap();
+
+		drop(failures);
+		assert!(recovery_called);
+
+		let events = mock.get_events();
+		let clicks: Vec<_> = events
+			.iter()
+			.filter(|e| matches!(e, InputEvent::MouseClicked(_)))
+			.collect();
+		// Should have clicked 3 times:
+		// 1. misclick (Left button)
+		// 2. wrong button click (Right button)
+		// 3. corrected click (Left button) after recovery
+		assert_eq!(clicks.len(), 3);
+		assert_eq!(clicks[0], &InputEvent::MouseClicked(Button::Left));
+		assert_eq!(clicks[1], &InputEvent::MouseClicked(Button::Right));
+		assert_eq!(clicks[2], &InputEvent::MouseClicked(Button::Left));
+	}
+
+	#[test]
+	fn test_compound_key_combination_failures() {
+		let mock = MockDevice::new(Point::new(0, 0));
+		let mut dev = HumanizedDevice::new(mock.clone());
+		let mut recovery_called = false;
+
+		let compound = KeyCombinationFailure::Compound(vec![
+			KeyCombinationFailure::MissedModifier(Key::Control),
+			KeyCombinationFailure::WrongKeyTap(Key::Unicode('a')),
+		]);
+
+		let mut failures = vec![(
+			compound,
+			1.0, // 100% chance to trigger
+			Box::new(|_d: &mut HumanizedDevice<MockDevice>| {
+				recovery_called = true;
+				Ok(())
+			}) as Box<dyn FnMut(&mut _) -> _>,
+		)];
+
+		dev.key_combination_flexible(&[Key::Control], Key::Unicode('c'), &mut failures)
+			.unwrap();
+
+		drop(failures);
+		assert!(recovery_called);
+
+		let events = mock.get_events();
+		// Should have typed 'a' during the wrong key tap sub-failure
+		assert!(events
+			.iter()
+			.any(|e| matches!(e, InputEvent::KeyAction { key: Key::Unicode('a'), action: Direction::Press })));
+	}
 }

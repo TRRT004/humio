@@ -24,6 +24,124 @@ impl<D: InputDevice> Drop for ModifierGuard<'_, D> {
 }
 
 impl<D: InputDevice> HumanizedDevice<D> {
+	fn execute_key_combination_failure(
+		&mut self,
+		failure: &KeyCombinationFailure,
+		modifiers: &[Key],
+		key: Key,
+	) -> Result<(), HumioError> {
+		use rand::RngExt;
+		let mut rng = rand::rng();
+
+		match failure {
+			KeyCombinationFailure::Compound(sub_failures) => {
+				log::trace!("Executing compound key combination failure with {} sub-errors", sub_failures.len());
+				for sub in sub_failures {
+					self.execute_key_combination_failure(sub, modifiers, key)?;
+					std::thread::sleep(std::time::Duration::from_millis(50));
+				}
+			}
+			KeyCombinationFailure::MissedModifier(missed_mod) => {
+				log::trace!("Executing key combination error: missing modifier {missed_mod:?}");
+				for &mod_key in modifiers {
+					if mod_key == *missed_mod {
+						continue;
+					}
+					self.inner.key(mod_key, Direction::Press)?;
+					std::thread::sleep(std::time::Duration::from_millis(
+						rng.random_range(15..45),
+					));
+				}
+				self.inner.key(key, Direction::Press)?;
+				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
+				self.inner.key(key, Direction::Release)?;
+
+				for &mod_key in modifiers.iter().rev() {
+					if mod_key == *missed_mod {
+						continue;
+					}
+					std::thread::sleep(std::time::Duration::from_millis(
+						rng.random_range(15..45),
+					));
+					self.inner.key(mod_key, Direction::Release)?;
+				}
+			}
+			KeyCombinationFailure::WrongKeyTap(wrong_key) => {
+				log::trace!(
+					"Executing key combination error: tapped wrong target key {wrong_key:?} instead of expected {key:?}"
+				);
+				for &mod_key in modifiers {
+					self.inner.key(mod_key, Direction::Press)?;
+					std::thread::sleep(std::time::Duration::from_millis(
+						rng.random_range(15..45),
+					));
+				}
+				self.inner.key(*wrong_key, Direction::Press)?;
+				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
+				self.inner.key(*wrong_key, Direction::Release)?;
+
+				for &mod_key in modifiers.iter().rev() {
+					std::thread::sleep(std::time::Duration::from_millis(
+						rng.random_range(15..45),
+					));
+					self.inner.key(mod_key, Direction::Release)?;
+				}
+			}
+			KeyCombinationFailure::ReleasedModifierEarly(early_mod) => {
+				log::trace!(
+					"Executing key combination error: releasing modifier {early_mod:?} early"
+				);
+				for &mod_key in modifiers {
+					self.inner.key(mod_key, Direction::Press)?;
+					std::thread::sleep(std::time::Duration::from_millis(
+						rng.random_range(15..45),
+					));
+				}
+				// Release the early modifier before target key is pressed
+				self.inner.key(*early_mod, Direction::Release)?;
+				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(10..30)));
+
+				self.inner.key(key, Direction::Press)?;
+				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
+				self.inner.key(key, Direction::Release)?;
+
+				for &mod_key in modifiers.iter().rev() {
+					if mod_key == *early_mod {
+						continue;
+					}
+					std::thread::sleep(std::time::Duration::from_millis(
+						rng.random_range(15..45),
+					));
+					self.inner.key(mod_key, Direction::Release)?;
+				}
+			}
+			KeyCombinationFailure::ModifierStuck(stuck_mod) => {
+				log::trace!(
+					"Executing key combination error: modifier {stuck_mod:?} got stuck (not released)"
+				);
+				for &mod_key in modifiers {
+					self.inner.key(mod_key, Direction::Press)?;
+					std::thread::sleep(std::time::Duration::from_millis(
+						rng.random_range(15..45),
+					));
+				}
+				self.inner.key(key, Direction::Press)?;
+				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
+				self.inner.key(key, Direction::Release)?;
+
+				for &mod_key in modifiers.iter().rev() {
+					if mod_key == *stuck_mod {
+						continue; // Leave it stuck in OS keyboard state!
+					}
+					std::thread::sleep(std::time::Duration::from_millis(
+						rng.random_range(15..45),
+					));
+					self.inner.key(mod_key, Direction::Release)?;
+				}
+			}
+		}
+		Ok(())
+	}
 	/// Types text with natural keystroke delays and optional simulated typos (replacements,
 	/// transpositions, or double-taps) with backspace correction, using probabilities from `self.config`.
 	pub fn text_humanized(&mut self, text: &str, allow_error: bool) -> Result<(), HumioError> {
@@ -222,14 +340,14 @@ impl<D: InputDevice> HumanizedDevice<D> {
 			let mut cumulative_prob = 0.0;
 			for (failure, base_prob) in &self.config.key_combo_failures {
 				let prob = if let Some(ref calc) = self.chance_calculator {
-					calc.calculate_chance(&FailureType::KeyCombination(*failure), *base_prob)
+					calc.calculate_chance(&FailureType::KeyCombination(failure.clone()), *base_prob)
 				} else {
 					*base_prob
 				};
 
 				cumulative_prob += prob;
 				if roll < cumulative_prob {
-					triggered_failure = Some(*failure);
+					triggered_failure = Some(failure.clone());
 					break;
 				}
 			}
@@ -239,106 +357,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 			log::debug!("Simulated key combination failure triggered: {failure:?}");
 
 			// 1. Perform simulated incorrect combination
-			match failure {
-				KeyCombinationFailure::MissedModifier(missed_mod) => {
-					log::trace!("Executing key combination error: missing modifier {missed_mod:?}");
-					for &mod_key in modifiers {
-						if mod_key == missed_mod {
-							continue;
-						}
-						self.inner.key(mod_key, Direction::Press)?;
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-					}
-					self.inner.key(key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
-					self.inner.key(key, Direction::Release)?;
-
-					for &mod_key in modifiers.iter().rev() {
-						if mod_key == missed_mod {
-							continue;
-						}
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-						self.inner.key(mod_key, Direction::Release)?;
-					}
-				}
-				KeyCombinationFailure::WrongKeyTap(wrong_key) => {
-					log::trace!(
-						"Executing key combination error: tapped wrong target key {wrong_key:?} instead of expected {key:?}"
-					);
-					for &mod_key in modifiers {
-						self.inner.key(mod_key, Direction::Press)?;
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-					}
-					self.inner.key(wrong_key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
-					self.inner.key(wrong_key, Direction::Release)?;
-
-					for &mod_key in modifiers.iter().rev() {
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-						self.inner.key(mod_key, Direction::Release)?;
-					}
-				}
-				KeyCombinationFailure::ReleasedModifierEarly(early_mod) => {
-					log::trace!(
-						"Executing key combination error: releasing modifier {early_mod:?} early"
-					);
-					for &mod_key in modifiers {
-						self.inner.key(mod_key, Direction::Press)?;
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-					}
-					// Release the early modifier before target key is pressed
-					self.inner.key(early_mod, Direction::Release)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(10..30)));
-
-					self.inner.key(key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
-					self.inner.key(key, Direction::Release)?;
-
-					for &mod_key in modifiers.iter().rev() {
-						if mod_key == early_mod {
-							continue;
-						}
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-						self.inner.key(mod_key, Direction::Release)?;
-					}
-				}
-				KeyCombinationFailure::ModifierStuck(stuck_mod) => {
-					log::trace!(
-						"Executing key combination error: modifier {stuck_mod:?} got stuck (not released)"
-					);
-					for &mod_key in modifiers {
-						self.inner.key(mod_key, Direction::Press)?;
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-					}
-					self.inner.key(key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
-					self.inner.key(key, Direction::Release)?;
-
-					for &mod_key in modifiers.iter().rev() {
-						if mod_key == stuck_mod {
-							continue; // Leave it stuck in OS keyboard state!
-						}
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-						self.inner.key(mod_key, Direction::Release)?;
-					}
-				}
-			}
+			self.execute_key_combination_failure(&failure, modifiers, key)?;
 
 			// 2. Perform default built-in recovery inside recursive context guard
 			self.execute_recovery_context(|d| {
@@ -374,7 +393,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 			let mut idx = None;
 			for (i, (failure, base_prob, _)) in failures.iter().enumerate() {
 				let prob = if let Some(ref calc) = self.chance_calculator {
-					calc.calculate_chance(&FailureType::KeyCombination(*failure), *base_prob)
+					calc.calculate_chance(&FailureType::KeyCombination(failure.clone()), *base_prob)
 				} else {
 					*base_prob
 				};
@@ -393,106 +412,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 			log::debug!("Simulated key combination failure triggered: {failure:?}");
 
 			// 1. Perform simulated incorrect combination
-			match failure {
-				KeyCombinationFailure::MissedModifier(missed_mod) => {
-					log::trace!("Executing key combination error: missing modifier {missed_mod:?}");
-					for &mod_key in modifiers {
-						if mod_key == *missed_mod {
-							continue;
-						}
-						self.inner.key(mod_key, Direction::Press)?;
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-					}
-					self.inner.key(key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
-					self.inner.key(key, Direction::Release)?;
-
-					for &mod_key in modifiers.iter().rev() {
-						if mod_key == *missed_mod {
-							continue;
-						}
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-						self.inner.key(mod_key, Direction::Release)?;
-					}
-				}
-				KeyCombinationFailure::WrongKeyTap(wrong_key) => {
-					log::trace!(
-						"Executing key combination error: tapped wrong target key {wrong_key:?} instead of expected {key:?}"
-					);
-					for &mod_key in modifiers {
-						self.inner.key(mod_key, Direction::Press)?;
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-					}
-					self.inner.key(*wrong_key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
-					self.inner.key(*wrong_key, Direction::Release)?;
-
-					for &mod_key in modifiers.iter().rev() {
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-						self.inner.key(mod_key, Direction::Release)?;
-					}
-				}
-				KeyCombinationFailure::ReleasedModifierEarly(early_mod) => {
-					log::trace!(
-						"Executing key combination error: releasing modifier {early_mod:?} early"
-					);
-					for &mod_key in modifiers {
-						self.inner.key(mod_key, Direction::Press)?;
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-					}
-					// Release the early modifier before target key is pressed
-					self.inner.key(*early_mod, Direction::Release)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(10..30)));
-
-					self.inner.key(key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
-					self.inner.key(key, Direction::Release)?;
-
-					for &mod_key in modifiers.iter().rev() {
-						if mod_key == *early_mod {
-							continue;
-						}
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-						self.inner.key(mod_key, Direction::Release)?;
-					}
-				}
-				KeyCombinationFailure::ModifierStuck(stuck_mod) => {
-					log::trace!(
-						"Executing key combination error: modifier {stuck_mod:?} got stuck (not released)"
-					);
-					for &mod_key in modifiers {
-						self.inner.key(mod_key, Direction::Press)?;
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-					}
-					self.inner.key(key, Direction::Press)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(20..60)));
-					self.inner.key(key, Direction::Release)?;
-
-					for &mod_key in modifiers.iter().rev() {
-						if mod_key == *stuck_mod {
-							continue; // Leave it stuck in OS keyboard state!
-						}
-						std::thread::sleep(std::time::Duration::from_millis(
-							rng.random_range(15..45),
-						));
-						self.inner.key(mod_key, Direction::Release)?;
-					}
-				}
-			}
+			self.execute_key_combination_failure(failure, modifiers, key)?;
 
 			// 2. Realization delay (200-350ms)
 			let reaction_delay = rng.random_range(200..=350);
@@ -555,6 +475,10 @@ impl<D: InputDevice> HumanizedDevice<D> {
 				self.inner.key(*stuck_mod, Direction::Release)?;
 				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(100..200)));
 
+				self.key_combination_normal(modifiers, key)?;
+			}
+			KeyCombinationFailure::Compound(_) => {
+				log::debug!("Built-in recovery: compound failure occurred. Retrying correct combination.");
 				self.key_combination_normal(modifiers, key)?;
 			}
 		}

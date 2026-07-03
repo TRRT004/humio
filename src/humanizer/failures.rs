@@ -11,9 +11,11 @@ pub enum ClickFailure {
 	WrongButton(Button),
 	/// Clicks twice instead of once.
 	DoubleClick,
+	/// Compound click failure combining multiple mouse errors in sequence.
+	Compound(Vec<ClickFailure>),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KeyCombinationFailure {
 	/// Missed pressing one of the modifier keys.
 	MissedModifier(Key),
@@ -23,6 +25,8 @@ pub enum KeyCombinationFailure {
 	ReleasedModifierEarly(Key),
 	/// Failed to release a modifier key after the combination completes (stuck key).
 	ModifierStuck(Key),
+	/// Compound key failure combining multiple modifier/key errors in sequence.
+	Compound(Vec<KeyCombinationFailure>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

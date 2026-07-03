@@ -14,6 +14,77 @@ use crate::{DelayMs, HumioError, InputDevice, Mouse, Point, ScrollAxis};
 use enigo::Button;
 
 impl<D: InputDevice> HumanizedDevice<D> {
+	fn execute_click_failure(
+		&mut self,
+		failure: &ClickFailure,
+		area: &TargetArea,
+		button: Button,
+	) -> Result<(), HumioError> {
+		use rand::RngExt;
+		let mut rng = rand::rng();
+
+		match failure {
+			ClickFailure::Compound(sub_failures) => {
+				log::trace!("Executing compound click failure with {} sub-errors", sub_failures.len());
+				for sub in sub_failures {
+					self.execute_click_failure(sub, area, button)?;
+					// Stagger delay between cascading sub-failures
+					std::thread::sleep(std::time::Duration::from_millis(50));
+				}
+			}
+			ClickFailure::Misclick => {
+				let correct_point = area.generate_click_point();
+				let angle = rng.random_range(0.0..(2.0 * std::f64::consts::PI));
+				let dist = rng.random_range(12.0..25.0);
+				let mis_point = Point::new(
+					correct_point.x + (dist * angle.cos()).round() as i32,
+					correct_point.y + (dist * angle.sin()).round() as i32,
+				);
+				log::trace!("Executing misclick: clicking outside target area at {mis_point:?}");
+
+				let start = self.inner.location()?;
+				let path = generate_wind_mouse_path(start, mis_point);
+				for step in &path {
+					self.inner.move_mouse(step.point)?;
+					if step.delay.0 > 0 {
+						std::thread::sleep(step.delay.to_duration());
+					}
+				}
+				sleep_gaussian_delay(DelayMs(80), 20);
+				self.inner.click(button)?;
+			}
+			ClickFailure::MisclickTo(error_area) => {
+				let mis_point = error_area.generate_click_point();
+				log::trace!("Executing targeted misclick: clicking failure area at {mis_point:?}");
+
+				let start = self.inner.location()?;
+				let path = generate_wind_mouse_path(start, mis_point);
+				for step in &path {
+					self.inner.move_mouse(step.point)?;
+					if step.delay.0 > 0 {
+						std::thread::sleep(step.delay.to_duration());
+					}
+				}
+				sleep_gaussian_delay(DelayMs(80), 20);
+				self.inner.click(button)?;
+			}
+			ClickFailure::WrongButton(wrong_btn) => {
+				log::trace!("Executing wrong button click: clicking {wrong_btn:?} instead of expected {button:?}");
+				self.move_to_area(area, false)?;
+				sleep_gaussian_delay(DelayMs(80), 20);
+				self.inner.click(*wrong_btn)?;
+			}
+			ClickFailure::DoubleClick => {
+				log::trace!("Executing double click: clicking target twice with button {button:?}");
+				self.move_to_area(area, false)?;
+				sleep_gaussian_delay(DelayMs(80), 20);
+				self.inner.click(button)?;
+				std::thread::sleep(std::time::Duration::from_millis(rng.random_range(80..150)));
+				self.inner.click(button)?;
+			}
+		}
+		Ok(())
+	}
 	/// Moves the mouse from its current location to a point in the target area
 	/// using a human-like `WindMouse` path, with optional simulated hover overshoots and adjustments.
 	pub fn move_to_area(&mut self, area: &TargetArea, allow_error: bool) -> Result<(), HumioError> {
@@ -107,66 +178,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 		if let Some(failure) = triggered_failure {
 			log::debug!("Simulated click failure triggered: {failure:?}");
 			// 1. Perform simulated incorrect action
-			match &failure {
-				ClickFailure::Misclick => {
-					let correct_point = area.generate_click_point();
-					let angle = rng.random_range(0.0..(2.0 * std::f64::consts::PI));
-					let dist = rng.random_range(12.0..25.0);
-					let mis_point = Point::new(
-						correct_point.x + (dist * angle.cos()).round() as i32,
-						correct_point.y + (dist * angle.sin()).round() as i32,
-					);
-					log::trace!(
-						"Executing misclick: clicking outside target area at {mis_point:?}"
-					);
-
-					let start = self.inner.location()?;
-					let path = generate_wind_mouse_path(start, mis_point);
-					for step in &path {
-						self.inner.move_mouse(step.point)?;
-						if step.delay.0 > 0 {
-							std::thread::sleep(step.delay.to_duration());
-						}
-					}
-					sleep_gaussian_delay(DelayMs(80), 20);
-					self.inner.click(button)?;
-				}
-				ClickFailure::MisclickTo(error_area) => {
-					let mis_point = error_area.generate_click_point();
-					log::trace!(
-						"Executing targeted misclick: clicking failure area at {mis_point:?}"
-					);
-
-					let start = self.inner.location()?;
-					let path = generate_wind_mouse_path(start, mis_point);
-					for step in &path {
-						self.inner.move_mouse(step.point)?;
-						if step.delay.0 > 0 {
-							std::thread::sleep(step.delay.to_duration());
-						}
-					}
-					sleep_gaussian_delay(DelayMs(80), 20);
-					self.inner.click(button)?;
-				}
-				ClickFailure::WrongButton(wrong_btn) => {
-					log::trace!(
-						"Executing wrong button click: clicking {wrong_btn:?} instead of expected {button:?}"
-					);
-					self.move_to_area(area, false)?;
-					sleep_gaussian_delay(DelayMs(80), 20);
-					self.inner.click(*wrong_btn)?;
-				}
-				ClickFailure::DoubleClick => {
-					log::trace!(
-						"Executing double click: clicking target twice with button {button:?}"
-					);
-					self.move_to_area(area, false)?;
-					sleep_gaussian_delay(DelayMs(80), 20);
-					self.inner.click(button)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(80..150)));
-					self.inner.click(button)?;
-				}
-			}
+			self.execute_click_failure(&failure, area, button)?;
 
 			// 2. Run built-in default recovery routine inside recursive context guard
 			self.execute_recovery_context(|d| {
@@ -225,66 +237,7 @@ impl<D: InputDevice> HumanizedDevice<D> {
 			log::debug!("Simulated click failure triggered: {failure:?}");
 
 			// 1. Perform the simulated error action
-			match failure {
-				ClickFailure::Misclick => {
-					let correct_point = area.generate_click_point();
-					let angle = rng.random_range(0.0..(2.0 * std::f64::consts::PI));
-					let dist = rng.random_range(12.0..25.0);
-					let mis_point = Point::new(
-						correct_point.x + (dist * angle.cos()).round() as i32,
-						correct_point.y + (dist * angle.sin()).round() as i32,
-					);
-					log::trace!(
-						"Executing misclick: clicking outside target area at {mis_point:?}"
-					);
-
-					let start = self.inner.location()?;
-					let path = generate_wind_mouse_path(start, mis_point);
-					for step in &path {
-						self.inner.move_mouse(step.point)?;
-						if step.delay.0 > 0 {
-							std::thread::sleep(step.delay.to_duration());
-						}
-					}
-					sleep_gaussian_delay(DelayMs(80), 20);
-					self.inner.click(button)?;
-				}
-				ClickFailure::MisclickTo(error_area) => {
-					let mis_point = error_area.generate_click_point();
-					log::trace!(
-						"Executing targeted misclick: clicking failure area at {mis_point:?}"
-					);
-
-					let start = self.inner.location()?;
-					let path = generate_wind_mouse_path(start, mis_point);
-					for step in &path {
-						self.inner.move_mouse(step.point)?;
-						if step.delay.0 > 0 {
-							std::thread::sleep(step.delay.to_duration());
-						}
-					}
-					sleep_gaussian_delay(DelayMs(80), 20);
-					self.inner.click(button)?;
-				}
-				ClickFailure::WrongButton(wrong_btn) => {
-					log::trace!(
-						"Executing wrong button click: clicking {wrong_btn:?} instead of expected {button:?}"
-					);
-					self.move_to_area(area, false)?;
-					sleep_gaussian_delay(DelayMs(80), 20);
-					self.inner.click(*wrong_btn)?;
-				}
-				ClickFailure::DoubleClick => {
-					log::trace!(
-						"Executing double click: clicking target twice with button {button:?}"
-					);
-					self.move_to_area(area, false)?;
-					sleep_gaussian_delay(DelayMs(80), 20);
-					self.inner.click(button)?;
-					std::thread::sleep(std::time::Duration::from_millis(rng.random_range(80..150)));
-					self.inner.click(button)?;
-				}
-			}
+			self.execute_click_failure(failure, area, button)?;
 
 			// 2. Realization delay (250-450ms)
 			let reaction_delay = rng.random_range(250..=450);
@@ -351,6 +304,13 @@ impl<D: InputDevice> HumanizedDevice<D> {
 			}
 			ClickFailure::DoubleClick => {
 				log::debug!("Built-in recovery: double-click occurred. Realized and proceeding.");
+			}
+			ClickFailure::Compound(_) => {
+				log::debug!("Built-in recovery: compound failure occurred. Retrying correct click at target area.");
+				self.move_to_area(area, false)?;
+				sleep_gaussian_delay(DelayMs(80), 20);
+				self.inner.click(button)?;
+				sleep_gaussian_delay(DelayMs(80), 20);
 			}
 		}
 		Ok(())
