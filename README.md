@@ -1,5 +1,8 @@
 # humio
 
+[![GitHub Pages Docs](https://img.shields.io/badge/docs-GitHub_Pages-blue.svg)](https://TRRT004.github.io/humio/humio/index.html)
+[![Rust CI Status](https://github.com/TRRT004/humio/actions/workflows/rust.yml/badge.svg)](https://github.com/TRRT004/humio/actions)
+
 A humanized input simulation library for Rust scripting. Provides realistic mouse movement, keyboard typing, and configurable failure injection with automatic recovery — designed to mimic human imperfection rather than robotic precision.
 
 ## Features
@@ -76,11 +79,28 @@ let mut failures = vec![
 dev.click_area_flexible(&target, Button::Left, &mut failures)?;
 ```
 
+## Developer CLI (Documentation & Git Automation)
+
+The crate includes a built-in developer utility to automatically compile the API documentation, stage modified files, commit them, and push them to the remote repository in one command.
+
+Run it via Cargo:
+```bash
+cargo run --bin docgen -- [OPTIONS]
+```
+
+### Available Flags
+
+- `-m`, `--message <MSG>`: Specifies a custom Git commit message. (Default: `"docs: update API documentation"`)
+- `--no-push`: Stage and commit files locally but skip running `git push`.
+- `-h`, `--help`: Prints the CLI help message detailing usage.
+
 ## Architecture
 
 ```
 humio/
 └── src/
+    ├── bin/
+    │   └── docgen.rs           # Documentation generation and Git automation CLI tool
     ├── lib.rs                  # Public API: traits (Mouse, Keyboard, InputDevice), Point, etc.
     ├── physical_device.rs      # Enigo-backed real hardware device
     ├── mock.rs                 # In-memory MockDevice for testing
