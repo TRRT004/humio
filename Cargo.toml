@@ -1,0 +1,21 @@
+[package]
+name = "rs3-input"
+version = "0.1.0"
+edition = "2024"
+description = "Humanized input simulation for Rust scripting — realistic mouse movement, keyboard typing, and failure injection with configurable recovery."
+license = "MIT"
+repository = "https://github.com/rober/rs3-input"
+keywords = ["input", "automation", "humanizer", "mouse", "keyboard"]
+categories = ["simulation", "os"]
+readme = "README.md"
+
+[dependencies]
+enigo = "0.6.1"
+rand = "0.10.2"
+log = "0.4"
+
+[dev-dependencies]
+# Tests live in src/mock.rs directly — no extra dev deps needed
+
+[lints.clippy]
+pedantic = "deny"
