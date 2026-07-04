@@ -1048,17 +1048,19 @@ mod tests {
 		let mock = MockDevice::new(Point::new(0, 0));
 		let mut dev = HumanizedDevice::new(mock.clone());
 
+		let rect = TargetArea::Rect {
+			top_left: Point::new(90, 90),
+			bottom_right: Point::new(110, 110),
+			target: None,
+			std_dev_x: None,
+			std_dev_y: None,
+		};
+
 		// Force overshoot path by setting config overshoot_chance to 1.0
 		dev.config.overshoot_chance = 1.0;
-		dev.move_to_area(&TargetArea::Point(Point::new(100, 100)), true)
-			.unwrap();
+		dev.move_to_area(&rect, true).unwrap();
 
 		let events = mock.get_events();
-		// In an overshoot path, we move to overshoot_point first, then to actual target (100, 100).
-		// The last step should still be at (100, 100).
-		assert_eq!(mock.location().unwrap(), Point::new(100, 100));
-
-		// Check that the mouse path visited some point beyond or offset from the target, then came back.
 		let path_points: Vec<Point> = events
 			.iter()
 			.filter_map(|e| {
@@ -1070,7 +1072,14 @@ mod tests {
 			})
 			.collect();
 		assert!(!path_points.is_empty());
-		assert_eq!(*path_points.last().unwrap(), Point::new(100, 100));
+		
+		// The last point must be inside the target area (recovery action)
+		let final_pt = *path_points.last().unwrap();
+		assert!(rect.contains(final_pt), "Final point {:?} is not inside the target area", final_pt);
+
+		// At least one intermediate point must be outside the target area (failure chance of going outside)
+		let visited_outside = path_points.iter().any(|&pt| !rect.contains(pt));
+		assert!(visited_outside, "Path did not overshoot outside the target area");
 	}
 
 	#[test]

@@ -203,6 +203,29 @@ impl TargetArea {
 			}
 		}
 	}
+
+	/// Checks if a point is within the target area.
+	#[must_use]
+	pub fn contains(&self, p: Point) -> bool {
+		match self {
+			Self::Point(pt) => *pt == p,
+			Self::Rect { top_left, bottom_right, .. } => {
+				let min_x = top_left.x.min(bottom_right.x);
+				let max_x = top_left.x.max(bottom_right.x);
+				let min_y = top_left.y.min(bottom_right.y);
+				let max_y = top_left.y.max(bottom_right.y);
+				p.x >= min_x && p.x <= max_x && p.y >= min_y && p.y <= max_y
+			}
+			Self::Circle { center, radius, .. } => {
+				let dx = p.x - center.x;
+				let dy = p.y - center.y;
+				dx * dx + dy * dy <= radius * radius
+			}
+			Self::Polygon { vertices, .. } => {
+				is_point_in_polygon(p.x, p.y, vertices)
+			}
+		}
+	}
 }
 
 /// Compute centroid (simple average of vertices) of a polygon.

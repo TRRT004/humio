@@ -104,14 +104,25 @@ impl<D: InputDevice> HumanizedDevice<D> {
 			&& !self.should_bypass_failures()
 			&& rng.random_bool(self.config.overshoot_chance)
 		{
-			// Generate an overshoot point slightly past/offset from the target
+			// Generate an overshoot point slightly past/offset from the target, ensuring it goes outside the target area
 			let angle = rng.random_range(0.0..(2.0 * std::f64::consts::PI));
-			let dist = rng.random_range(10.0..22.0);
-			let overshoot_point = Point::new(
+			let mut dist = rng.random_range(10.0..22.0);
+			let mut overshoot_point = Point::new(
 				target.x + (dist * angle.cos()).round() as i32,
 				target.y + (dist * angle.sin()).round() as i32,
 			);
-			log::debug!("Hover overshoot triggered! Overshooting to {overshoot_point:?}");
+			
+			// Guarantee that the overshoot point lies outside the target area
+			let mut attempts = 0;
+			while area.contains(overshoot_point) && attempts < 10 {
+				dist += 15.0;
+				overshoot_point = Point::new(
+					target.x + (dist * angle.cos()).round() as i32,
+					target.y + (dist * angle.sin()).round() as i32,
+				);
+				attempts += 1;
+			}
+			log::debug!("Hover overshoot triggered! Overshooting outside target area to {overshoot_point:?}");
 
 			// Move to overshoot point
 			let path = generate_wind_mouse_path(start, overshoot_point);
